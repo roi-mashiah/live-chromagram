@@ -35,4 +35,4 @@ class InputDeviceManager:
                                                                                input_format=recording_config.sample_format)
             if candidate_supports_parameters:
                 return candidate
-        raise Exception(f"couldn't find a compatible device for the desired parameters: {recording_config}")
+        raise ValueError(f"couldn't find a compatible device for the desired parameters: {recording_config}")
