@@ -1,5 +1,6 @@
 from queue import Queue
 
+import matplotlib.pyplot as plt
 import pyaudio
 
 import utils
@@ -19,6 +20,9 @@ def process_jobs_from_queue(config):
         raw_data = q.get()
         log.info("acquired data from queue, start processing...")
         samples = utils.bytes_to_samples(raw_data, config)
+        pitch_energies = utils.SpectrogramUtil.process_time_samples(samples, config.sample_rate)
+        plt.plot(range(128), pitch_energies.reshape(-1))
+        plt.pause(0.1)
 
 
 if __name__ == '__main__':
@@ -38,6 +42,7 @@ if __name__ == '__main__':
             stream_callback=insert_buffer_to_queue
         )
         process_jobs_from_queue(recording_parameters)
+        plt.show()
     except ValueError as device_error:
         log.error(f"choose different recording parameters: {device_error}")
     except Exception as ex:

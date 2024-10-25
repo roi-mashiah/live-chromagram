@@ -56,8 +56,8 @@ class SpectrogramUtil:
 
     @staticmethod
     def calculate_log_frequency_spectrogram(power_spectrum, freq_axis):
-        pitch_energies = np.zeros([1, 127])
-        for pitch in range(127):
+        pitch_energies = np.zeros([1, 128])
+        for pitch in range(128):
             mask = SpectrogramUtil.get_frequency_mask(freq_axis, pitch)
             pitch_energies[0, pitch] = np.sum(power_spectrum[mask])
         return pitch_energies
