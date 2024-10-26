@@ -65,7 +65,9 @@ class SpectrogramUtil:
     @staticmethod
     def calculate_power_spectrum(x):
         n = 2 ** (len(x) - 1).bit_length()
-        dft = rfft(x, n)
+        x_padded = np.concatenate([x, np.zeros(n - len(x))])
+        win = np.hanning(n)
+        dft = rfft(x_padded * win) / sum(win)
         power_spectrum = np.power(np.abs(dft), 2)
         return power_spectrum, n
 
