@@ -1,6 +1,7 @@
 from queue import Queue
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pyaudio
 
 import utils
@@ -15,14 +16,26 @@ def insert_buffer_to_queue(in_data, frame_count, time_info, status_flags):
     return None, pyaudio.paContinue
 
 
+def plot_pitch_energy(pitch_energies):
+    plt.clf()
+    im = plt.imshow(np.log10(pitch_energies * 50 + 1), aspect='auto')
+    plt.grid()
+    plt.xlabel("Pitch")
+    plt.pause(0.1)
+
+
 def process_jobs_from_queue(config):
+    m = 10
+    im = np.zeros([m, 128])
+    i = 0
     while True:
         raw_data = q.get()
         log.info("acquired data from queue, start processing...")
         samples = utils.bytes_to_samples(raw_data, config)
-        pitch_energies = utils.SpectrogramUtil.process_time_samples(samples, config.sample_rate)
-        plt.plot(range(128), pitch_energies.reshape(-1))
-        plt.pause(0.1)
+        current_pitch_energies = utils.SpectrogramUtil.process_time_samples(samples, config.sample_rate)
+        im[i % m, :] = current_pitch_energies / np.max(current_pitch_energies)
+        plot_pitch_energy(im)
+        i += 1
 
 
 if __name__ == '__main__':
