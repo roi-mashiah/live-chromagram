@@ -72,18 +72,19 @@ class SpectrogramUtil:
         return power_spectrum, n
 
     @staticmethod
-    def process_time_samples(samples, sampling_rate):
+    def calculate_pitch_energy_map(samples, sampling_rate):
         power_spectrum, n = SpectrogramUtil.calculate_power_spectrum(samples)
         f_res = sampling_rate / n
         freq_axis = np.arange(0, sampling_rate / 2 + f_res, f_res)
         log_freq_spectrum = SpectrogramUtil.calculate_log_frequency_spectrogram(power_spectrum, freq_axis)
         return log_freq_spectrum
 
-
-if __name__ == '__main__':
-    fs = 8e3
-    ts = 1 / fs
-    t = np.arange(0, 2 + ts, ts)
-    f_hz = 440
-    x = np.sin(2 * np.pi * f_hz * t)
-    x_f = SpectrogramUtil.process_time_samples(x, fs)
+    @staticmethod
+    def calculate_chromogram(pitch_energy_map):
+        notes = 12
+        chromogram = np.zeros([1, notes])
+        pitch_axis = np.arange(128)
+        for n in range(notes):
+            pitch_class_mask = (pitch_axis % notes) == n
+            chromogram[0, n] = pitch_energy_map[0, pitch_class_mask].sum()
+        return chromogram
