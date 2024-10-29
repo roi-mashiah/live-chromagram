@@ -13,6 +13,7 @@ from recording_configuration import RecordingConfiguration
 
 SAMPLING_RATES = [8000, 16000, 44100, 48000]
 BITS_PER_SAMPLE = [8, 16, 24, 32]
+CHROMA = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
 
 
 def insert_buffer_to_queue(in_data, frame_count, time_info, status_flags):
@@ -24,23 +25,36 @@ def insert_buffer_to_queue(in_data, frame_count, time_info, status_flags):
 
 def process_jobs_from_queue(config):
     layout_dict = {"title": "Pitch Energies", "xaxis_title": "pitch", "yaxis_title": "time [sec]"}
+    layout_dict_c = {"title": "Chromogram", "xaxis_title": "notes", "yaxis_title": "time [sec]"}
     m = 10
-    im = np.zeros([m, 128])
+    pitch_energies = np.zeros([m, 128])
+    chromagram = np.zeros([m, 12])
     i = 0
-    fig = px.imshow(np.log10(im * 50 + 1), aspect='auto')
+
+    fig = px.imshow(np.log10(pitch_energies * 50 + 1), aspect='auto')
     fig.update_layout(layout_dict)
-    energies_ph.plotly_chart(fig, use_container_width=True)
+    energies_ph.plotly_chart(fig, use_container_width=True, theme=None, key="pitch_energies")
+
+    fig_c = px.imshow(np.log10(chromagram * 50 + 1), aspect='auto')
+    fig_c.update_layout(layout_dict_c, xaxis={"tickmode": "array", "tickvals": list(range(12)), "ticktext": CHROMA})
+    chromagram_ph.plotly_chart(fig_c, use_container_width=True, theme=None, key="chromogram")
+
     while True:
         if not recording:
             return
         raw_data = q.get()
         log.info("acquired data from queue, start processing...")
         samples = utils.bytes_to_samples(raw_data, config)
-        current_pitch_energies = utils.SpectrogramUtil.process_time_samples(samples, config.sample_rate)
-        im[i % m, :] = current_pitch_energies / np.max(current_pitch_energies)
-        fig = px.imshow(np.log10(im * 50 + 1), aspect='auto')
-        fig.update_layout(layout_dict)
-        energies_ph.plotly_chart(fig, use_container_width=True,theme=None)
+        current_pitch_energies = utils.SpectrogramUtil.calculate_pitch_energy_map(samples, config.sample_rate)
+        current_chromagram = utils.SpectrogramUtil.calculate_chromogram(current_pitch_energies)
+
+        chromagram[i % m, :] = current_chromagram / current_chromagram.max()
+        pitch_energies[i % m, :] = current_pitch_energies / current_pitch_energies.max()
+
+        fig = fig.update(data=[{"z": np.log10(pitch_energies * 50 + 1)}])
+        fig_c = fig_c.update(data=[{"z": np.log10(chromagram * 50 + 1)}])
+        energies_ph.plotly_chart(fig, use_container_width=True, theme=None)
+        chromagram_ph.plotly_chart(fig_c, use_container_width=True, theme=None)
         i = i + 1 if i < m else 0
 
 
@@ -96,7 +110,7 @@ if __name__ == '__main__':
     q = Queue()
     recording = False
     stream: Optional[pyaudio.Stream] = None
-
+    st.set_page_config(layout="wide")
     try:
         input_device_manager = InputDeviceManager(p)
         recording_parameters = init_sidebar_input_params()
@@ -109,7 +123,8 @@ if __name__ == '__main__':
         column_1, column_2 = st.columns(2)
         column_1.button("Start Recording", on_click=start_recording)
         column_2.button("Stop Recording", on_click=stop_recording)
-        energies_ph = st.empty()
+        energies_ph = column_1.empty()
+        chromagram_ph = column_2.empty()
     except ValueError as device_error:
         log.error(f"choose different recording parameters: {device_error}")
     except Exception as ex:
